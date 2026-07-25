@@ -1109,7 +1109,6 @@ function fillQuad(id, list){
       if(cb.checked){
         markTaskDone(t);
         saveTasks();
-        sendWhatsApp('✅ ¡Listo! ' + t.title);
         render();
       }
     });
