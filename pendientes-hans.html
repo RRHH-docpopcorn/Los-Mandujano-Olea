@@ -294,6 +294,23 @@
   .update-list li.none{color:var(--ink-soft); font-style:italic; background:none; padding:2px 0;}
   .update-date{color:var(--admin); font-weight:600; white-space:nowrap;}
   .mini-form{display:flex; gap:6px;}
+
+  .edit-card{transform:none !important; border:2px solid var(--admin);}
+  .edit-form{display:flex; flex-direction:column; gap:8px;}
+  .edit-form input[type=text], .edit-form select, .edit-form input[type=datetime-local]{
+    font-family:'Inter';
+    padding:8px 9px;
+    border-radius:8px;
+    border:1px solid var(--card-edge);
+    font-size:0.85rem;
+    width:100%;
+  }
+  .edit-row{display:flex; gap:8px;}
+  .edit-row select, .edit-row input{flex:1; min-width:0;}
+  .edit-checks{display:flex; flex-wrap:wrap; gap:10px; font-size:0.78rem;}
+  .edit-checks label{display:flex; align-items:center; gap:4px; cursor:pointer;}
+  .edit-form .btn{font-size:0.8rem; padding:8px 12px;}
+
   .mini-form input{
     flex:1;
     font-family:'Inter';
@@ -500,16 +517,17 @@ const ROW_ID = 'main';
 //    y agrega como "Authorized JavaScript origin" la URL donde
 //    alojarán esta página (ej: https://tuusuario.github.io)
 // 5. Pega aquí el Client ID que te dan:
-const GOOGLE_CLIENT_ID = 'PEGA_AQUI_TU_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '246221194381-tups484imcku1qhopqqmv8gckhlf1hjn.apps.googleusercontent.com';
 // 6. Para que solo aparezcan los eventos que comparten entre ustedes
 //    (donde el otro está invitado), pega aquí el correo de Google de tu pareja:
-const CORREO_PAREJA = 'PEGA_TU_CORREO_AQUI@gmail.com';
+const CORREO_PAREJA = 'sindyolea@gmail.com';
 // ==========================================
 
 let tasks = [];
 let filter = 'todos';
 let notified = new Set();
 let expandedIds = new Set();
+let editingIds = new Set();
 let lastLoadedRaw = null;
 
 const grid = document.getElementById('grid');
@@ -595,6 +613,11 @@ function render(){
   emptyMsg.style.display = visible.length ? 'none' : 'block';
 
   visible.forEach(t=>{
+    if(editingIds.has(t.id)){
+      grid.appendChild(buildEditForm(t));
+      return;
+    }
+
     const card = document.createElement('div');
     card.className = 'card' + (t.done ? ' done' : '');
 
@@ -662,6 +685,14 @@ function render(){
     wspBtn.title = 'Enviar por WhatsApp';
     wspBtn.textContent = '📲';
     wspBtn.addEventListener('click', ()=> sendWhatsApp(taskToText(t)));
+    const editBtn = document.createElement('button');
+    editBtn.className = 'icon-btn';
+    editBtn.title = 'Editar';
+    editBtn.textContent = '✏️';
+    editBtn.addEventListener('click', ()=>{
+      editingIds.add(t.id);
+      render();
+    });
     const delBtn = document.createElement('button');
     delBtn.className = 'icon-btn';
     delBtn.title = 'Eliminar';
@@ -688,6 +719,7 @@ function render(){
       });
       actions.appendChild(toggleBtn);
     }
+    actions.appendChild(editBtn);
     actions.appendChild(delBtn);
     card.appendChild(actions);
 
@@ -737,6 +769,132 @@ function renderStats(){
       <div class="stat-label">⏰ Vencidos ahora</div>
     </div>
   `;
+}
+
+function buildEditForm(t){
+  const card = document.createElement('div');
+  card.className = 'card edit-card';
+
+  const pin = document.createElement('div');
+  pin.className = 'pin ' + t.assignee;
+  card.appendChild(pin);
+
+  const form = document.createElement('form');
+  form.className = 'edit-form';
+
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.value = t.title;
+  titleInput.required = true;
+  form.appendChild(titleInput);
+
+  const row1 = document.createElement('div');
+  row1.className = 'edit-row';
+
+  const catSelect = document.createElement('select');
+  catSelect.innerHTML = `
+    <option value="casa">🏠 Casa</option>
+    <option value="ninos">👶 Niños</option>
+    <option value="admin">📋 Administrativo</option>
+  `;
+  catSelect.value = t.category;
+
+  const asigSelect = document.createElement('select');
+  asigSelect.innerHTML = `
+    <option value="ambos">👥 Ambos</option>
+    <option value="yo">🔵 Yo</option>
+    <option value="hans">🔴 Hans</option>
+  `;
+  asigSelect.value = t.assignee;
+
+  row1.appendChild(catSelect);
+  row1.appendChild(asigSelect);
+  form.appendChild(row1);
+
+  const row2 = document.createElement('div');
+  row2.className = 'edit-row';
+
+  const dueInput = document.createElement('input');
+  dueInput.type = 'datetime-local';
+  dueInput.value = t.due || '';
+
+  const recSelect = document.createElement('select');
+  recSelect.innerHTML = `
+    <option value="none">🔁 No se repite</option>
+    <option value="weekly">🔁 Cada semana</option>
+    <option value="monthly">🔁 Cada mes</option>
+  `;
+  recSelect.value = t.recurrence || 'none';
+
+  row2.appendChild(dueInput);
+  row2.appendChild(recSelect);
+  form.appendChild(row2);
+
+  const checksRow = document.createElement('div');
+  checksRow.className = 'edit-checks';
+  const urgLabel = document.createElement('label');
+  const urgCb = document.createElement('input');
+  urgCb.type = 'checkbox';
+  urgCb.checked = !!t.urgent;
+  urgLabel.appendChild(urgCb);
+  urgLabel.append(' 🔥 Urgente');
+
+  const impLabel = document.createElement('label');
+  const impCb = document.createElement('input');
+  impCb.type = 'checkbox';
+  impCb.checked = !!t.important;
+  impLabel.appendChild(impCb);
+  impLabel.append(' ❗ Importante');
+
+  const projLabel = document.createElement('label');
+  const projCb = document.createElement('input');
+  projCb.type = 'checkbox';
+  projCb.checked = !!t.isProject;
+  projLabel.appendChild(projCb);
+  projLabel.append(' 🗂️ Proyecto');
+
+  checksRow.appendChild(urgLabel);
+  checksRow.appendChild(impLabel);
+  checksRow.appendChild(projLabel);
+  form.appendChild(checksRow);
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'edit-row';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'submit';
+  saveBtn.className = 'btn btn-primary';
+  saveBtn.textContent = 'Guardar cambios';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'btn btn-ghost';
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.addEventListener('click', ()=>{
+    editingIds.delete(t.id);
+    render();
+  });
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(cancelBtn);
+  form.appendChild(btnRow);
+
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const val = titleInput.value.trim();
+    if(!val) return;
+    t.title = val;
+    t.category = catSelect.value;
+    t.assignee = asigSelect.value;
+    t.due = dueInput.value || null;
+    t.recurrence = recSelect.value;
+    t.urgent = urgCb.checked;
+    t.important = impCb.checked;
+    t.isProject = projCb.checked;
+    editingIds.delete(t.id);
+    saveTasks();
+    render();
+  });
+
+  card.appendChild(form);
+  return card;
 }
 
 function buildProjectDetail(t){
