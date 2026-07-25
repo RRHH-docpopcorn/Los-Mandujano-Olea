@@ -138,6 +138,33 @@
   .tab.active{background:#6b5a85; color:#fffaf3; border-color:#6b5a85;}
   .tab:hover{transform:translateY(-1px);}
 
+  #tabs select{
+    font-family:'Inter'; font-weight:600; font-size:0.82rem;
+    padding:8px 10px; border-radius:20px; border:2px solid rgba(107,90,133,0.3);
+    background:rgba(255,255,255,0.5); color:#6b5a85; cursor:pointer;
+  }
+
+  .date-section{margin-bottom:26px;}
+  .section-sub-title{
+    font-family:'Kalam',cursive;
+    font-size:1.25rem;
+    color:#6b5a85;
+    margin:0 0 12px;
+    padding-left:2px;
+  }
+
+  .classify-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .toggle-chip{
+    font-family:'Inter'; font-weight:600; font-size:0.72rem;
+    padding:5px 10px; border-radius:14px;
+    border:1px solid var(--card-edge);
+    background:#fff; color:var(--ink-soft);
+    cursor:pointer; transition:.12s;
+  }
+  .toggle-chip.active.urg{background:#c96a52; color:#fff; border-color:#c96a52;}
+  .toggle-chip.active.imp{background:var(--admin); color:#fff; border-color:var(--admin);}
+  .event-add-btn{margin-top:8px; width:100%;}
+
   .btn{
     font-family:'Inter';
     font-weight:600;
@@ -424,11 +451,6 @@
   <div class="banner" id="banner"></div>
   <div class="undo-toast" id="undoToast"></div>
 
-  <section id="gcalSection" style="display:none; margin-bottom:26px;">
-    <h2 class="section-title">📆 Eventos compartidos con Google Calendar</h2>
-    <div class="grid" id="gcalGrid"></div>
-  </section>
-
   <form class="add-form" id="addForm">
     <input type="text" id="f-title" class="full" placeholder="¿Qué hay que hacer? (ej: pagar el gas, llevar a Mati al dentista)" required>
     <select id="f-cat">
@@ -461,9 +483,14 @@
     <div class="tab" data-filter="ninos">👶 Niños</div>
     <div class="tab" data-filter="admin">📋 Administrativo</div>
     <div class="tab" data-filter="pendientes">Solo pendientes</div>
+    <select id="dateFilter" title="¿Qué tan adelante quieres ver?">
+      <option value="week">📅 Hoy + próximos 7 días</option>
+      <option value="month">🗓️ Este mes</option>
+      <option value="all">🔭 Todo lo que viene</option>
+    </select>
   </div>
 
-  <div class="grid" id="grid"></div>
+  <div id="grid"></div>
   <div class="empty" id="emptyMsg" style="display:none;">No hay nada anotado acá todavía. Agreguen el primer pendiente arriba 🖊️</div>
 
   <section class="matrix">
@@ -601,6 +628,165 @@ function asigLabel(a){
   return a==='yo' ? '🔵 Yo' : a==='hans' ? '🔴 Hans' : '👥 Ambos';
 }
 
+function buildTaskCard(t){
+  if(editingIds.has(t.id)) return buildEditForm(t);
+
+  const card = document.createElement('div');
+  card.className = 'card' + (t.done ? ' done' : '');
+
+  const pin = document.createElement('div');
+  pin.className = 'pin ' + t.assignee;
+  card.appendChild(pin);
+
+  const top = document.createElement('div');
+  top.className = 'card-top';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = t.done;
+  cb.addEventListener('change', ()=>{
+    if(cb.checked){ markTaskDone(t); } else { t.done = false; t.completedAt = null; }
+    saveTasks(); render();
+  });
+  const title = document.createElement('div');
+  title.className = 'title';
+  title.textContent = t.title;
+  top.appendChild(cb);
+  top.appendChild(title);
+  card.appendChild(top);
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.innerHTML = `<span class="chip ${t.category}">${catLabel(t.category)}</span>` +
+    (t.isProject ? '<span class="chip proj">🗂️ Proyecto</span>' : '') +
+    (t.recurrence && t.recurrence !== 'none' ? `<span class="chip rec">🔁 ${t.recurrence === 'weekly' ? 'Semanal' : 'Mensual'}</span>` : '') +
+    (t.urgent ? '<span class="chip flag-urg">🔥 Urgente</span>' : '') +
+    (t.important ? '<span class="chip flag-imp">❗ Importante</span>' : '');
+  card.appendChild(meta);
+
+  const small = document.createElement('div');
+  small.style.fontSize = '0.75rem';
+  small.style.marginTop = '6px';
+  small.style.color = '#7a6f8a';
+  small.textContent = asigLabel(t.assignee);
+  card.appendChild(small);
+
+  if(t.due){
+    const due = document.createElement('div');
+    const isOverdue = new Date(t.due) < new Date() && !t.done;
+    due.className = 'due' + (isOverdue ? ' overdue' : '');
+    due.textContent = (isOverdue ? '⏰ Venció: ' : '📅 ') + new Date(t.due).toLocaleString('es-ES', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+    card.appendChild(due);
+  }
+
+  if(t.isProject){
+    const total = t.subtasks.length;
+    const doneCount = t.subtasks.filter(s=>s.done).length;
+    const pct = total ? Math.round((doneCount/total)*100) : 0;
+    const prog = document.createElement('div');
+    prog.className = 'progress-wrap';
+    prog.innerHTML = `
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-label">${total ? doneCount + '/' + total + ' subtareas · ' + pct + '%' : 'Sin subtareas todavía'}</div>
+    `;
+    card.appendChild(prog);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  const wspBtn = document.createElement('button');
+  wspBtn.className = 'icon-btn';
+  wspBtn.title = 'Enviar por WhatsApp';
+  wspBtn.textContent = '📲';
+  wspBtn.addEventListener('click', ()=> sendWhatsApp(taskToText(t)));
+  const editBtn = document.createElement('button');
+  editBtn.className = 'icon-btn';
+  editBtn.title = 'Editar';
+  editBtn.textContent = '✏️';
+  editBtn.addEventListener('click', ()=>{
+    editingIds.add(t.id);
+    render();
+  });
+  const delBtn = document.createElement('button');
+  delBtn.className = 'icon-btn';
+  delBtn.title = 'Eliminar';
+  delBtn.textContent = '🗑️';
+  delBtn.addEventListener('click', ()=> deleteTaskWithUndo(t));
+  actions.appendChild(wspBtn);
+  if(t.due){
+    const calBtn = document.createElement('button');
+    calBtn.className = 'icon-btn';
+    calBtn.title = 'Agregar a Google Calendar';
+    calBtn.textContent = '📅';
+    calBtn.addEventListener('click', ()=> window.open(calendarLink(t), '_blank'));
+    actions.appendChild(calBtn);
+  }
+  if(t.isProject){
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn btn-ghost';
+    toggleBtn.style.fontSize = '0.75rem';
+    toggleBtn.style.padding = '5px 10px';
+    toggleBtn.textContent = expandedIds.has(t.id) ? '▴ Ocultar detalle' : '▾ Ver detalle';
+    toggleBtn.addEventListener('click', ()=>{
+      if(expandedIds.has(t.id)) expandedIds.delete(t.id); else expandedIds.add(t.id);
+      render();
+    });
+    actions.appendChild(toggleBtn);
+  }
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+  card.appendChild(actions);
+
+  if(t.isProject && expandedIds.has(t.id)){
+    card.appendChild(buildProjectDetail(t));
+  }
+
+  return card;
+}
+
+function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function daysBetween(a,b){ return Math.round((startOfDay(b) - startOfDay(a)) / 86400000); }
+
+function bucketItems(items, filterVal){
+  const today = new Date();
+  const buckets = { hoy:[], proximos:[], sinFecha:[], proximosLabel:'📆 Próximos 7 días' };
+  if(filterVal === 'month') buckets.proximosLabel = '🗓️ Resto de este mes';
+  if(filterVal === 'all') buckets.proximosLabel = '🔭 Más adelante';
+
+  items.forEach(item=>{
+    if(!item.date){ buckets.sinFecha.push(item); return; }
+    const diff = daysBetween(today, item.date);
+    if(diff <= 0){ buckets.hoy.push(item); return; } // hoy y vencidos, siempre visibles
+    if(filterVal === 'week'){
+      if(diff <= 7) buckets.proximos.push(item);
+    } else if(filterVal === 'month'){
+      if(item.date.getMonth() === today.getMonth() && item.date.getFullYear() === today.getFullYear()) buckets.proximos.push(item);
+    } else {
+      buckets.proximos.push(item);
+    }
+  });
+
+  buckets.hoy.sort((a,b)=> a.date - b.date);
+  buckets.proximos.sort((a,b)=> a.date - b.date);
+  return buckets;
+}
+
+function renderSection(title, items){
+  if(!items.length) return;
+  const section = document.createElement('div');
+  section.className = 'date-section';
+  const h = document.createElement('h3');
+  h.className = 'section-sub-title';
+  h.textContent = title;
+  section.appendChild(h);
+  const inner = document.createElement('div');
+  inner.className = 'grid';
+  items.forEach(item=>{
+    inner.appendChild(item.isTask ? buildTaskCard(item.task) : buildEventCard(item.event));
+  });
+  section.appendChild(inner);
+  grid.appendChild(section);
+}
+
 function render(){
   grid.innerHTML = '';
   let visible = tasks.filter(t=>{
@@ -610,125 +796,25 @@ function render(){
   });
   visible = visible.slice().sort((a,b)=> (a.done - b.done) || ((b.urgent+b.important) - (a.urgent+a.important)));
 
-  emptyMsg.style.display = visible.length ? 'none' : 'block';
+  const taskItems = visible.map(t => ({ isTask:true, task:t, date: t.due ? new Date(t.due) : null }));
 
-  visible.forEach(t=>{
-    if(editingIds.has(t.id)){
-      grid.appendChild(buildEditForm(t));
-      return;
-    }
+  let eventItems = [];
+  if(gcalAccessToken){
+    eventItems = lastGcalEvents
+      .filter(ev => !tasks.some(t => t.gcalId === ev.id))
+      .map(ev => ({ isTask:false, event:ev, date: new Date(ev.start.dateTime || ev.start.date) }));
+  }
 
-    const card = document.createElement('div');
-    card.className = 'card' + (t.done ? ' done' : '');
+  const allItems = [...taskItems, ...eventItems];
+  emptyMsg.style.display = allItems.length ? 'none' : 'block';
 
-    const pin = document.createElement('div');
-    pin.className = 'pin ' + t.assignee;
-    card.appendChild(pin);
+  const dateFilterEl = document.getElementById('dateFilter');
+  const filterVal = dateFilterEl ? dateFilterEl.value : 'week';
+  const buckets = bucketItems(allItems, filterVal);
 
-    const top = document.createElement('div');
-    top.className = 'card-top';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = t.done;
-    cb.addEventListener('change', ()=>{
-      if(cb.checked){ markTaskDone(t); } else { t.done = false; t.completedAt = null; }
-      saveTasks(); render();
-    });
-    const title = document.createElement('div');
-    title.className = 'title';
-    title.textContent = t.title;
-    top.appendChild(cb);
-    top.appendChild(title);
-    card.appendChild(top);
-
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.innerHTML = `<span class="chip ${t.category}">${catLabel(t.category)}</span>` +
-      (t.isProject ? '<span class="chip proj">🗂️ Proyecto</span>' : '') +
-      (t.recurrence && t.recurrence !== 'none' ? `<span class="chip rec">🔁 ${t.recurrence === 'weekly' ? 'Semanal' : 'Mensual'}</span>` : '') +
-      (t.urgent ? '<span class="chip flag-urg">🔥 Urgente</span>' : '') +
-      (t.important ? '<span class="chip flag-imp">❗ Importante</span>' : '');
-    card.appendChild(meta);
-
-    const small = document.createElement('div');
-    small.style.fontSize = '0.75rem';
-    small.style.marginTop = '6px';
-    small.style.color = '#7a6f8a';
-    small.textContent = asigLabel(t.assignee);
-    card.appendChild(small);
-
-    if(t.due){
-      const due = document.createElement('div');
-      const isOverdue = new Date(t.due) < new Date() && !t.done;
-      due.className = 'due' + (isOverdue ? ' overdue' : '');
-      due.textContent = (isOverdue ? '⏰ Venció: ' : '📅 ') + new Date(t.due).toLocaleString('es-ES', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
-      card.appendChild(due);
-    }
-
-    if(t.isProject){
-      const total = t.subtasks.length;
-      const doneCount = t.subtasks.filter(s=>s.done).length;
-      const pct = total ? Math.round((doneCount/total)*100) : 0;
-      const prog = document.createElement('div');
-      prog.className = 'progress-wrap';
-      prog.innerHTML = `
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        <div class="progress-label">${total ? doneCount + '/' + total + ' subtareas · ' + pct + '%' : 'Sin subtareas todavía'}</div>
-      `;
-      card.appendChild(prog);
-    }
-
-    const actions = document.createElement('div');
-    actions.className = 'card-actions';
-    const wspBtn = document.createElement('button');
-    wspBtn.className = 'icon-btn';
-    wspBtn.title = 'Enviar por WhatsApp';
-    wspBtn.textContent = '📲';
-    wspBtn.addEventListener('click', ()=> sendWhatsApp(taskToText(t)));
-    const editBtn = document.createElement('button');
-    editBtn.className = 'icon-btn';
-    editBtn.title = 'Editar';
-    editBtn.textContent = '✏️';
-    editBtn.addEventListener('click', ()=>{
-      editingIds.add(t.id);
-      render();
-    });
-    const delBtn = document.createElement('button');
-    delBtn.className = 'icon-btn';
-    delBtn.title = 'Eliminar';
-    delBtn.textContent = '🗑️';
-    delBtn.addEventListener('click', ()=> deleteTaskWithUndo(t));
-    actions.appendChild(wspBtn);
-    if(t.due){
-      const calBtn = document.createElement('button');
-      calBtn.className = 'icon-btn';
-      calBtn.title = 'Agregar a Google Calendar';
-      calBtn.textContent = '📅';
-      calBtn.addEventListener('click', ()=> window.open(calendarLink(t), '_blank'));
-      actions.appendChild(calBtn);
-    }
-    if(t.isProject){
-      const toggleBtn = document.createElement('button');
-      toggleBtn.className = 'btn btn-ghost';
-      toggleBtn.style.fontSize = '0.75rem';
-      toggleBtn.style.padding = '5px 10px';
-      toggleBtn.textContent = expandedIds.has(t.id) ? '▴ Ocultar detalle' : '▾ Ver detalle';
-      toggleBtn.addEventListener('click', ()=>{
-        if(expandedIds.has(t.id)) expandedIds.delete(t.id); else expandedIds.add(t.id);
-        render();
-      });
-      actions.appendChild(toggleBtn);
-    }
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    card.appendChild(actions);
-
-    if(t.isProject && expandedIds.has(t.id)){
-      card.appendChild(buildProjectDetail(t));
-    }
-
-    grid.appendChild(card);
-  });
+  renderSection('📅 Hoy (y vencidos)', buckets.hoy);
+  renderSection(buckets.proximosLabel, buckets.proximos);
+  renderSection('🗒️ Sin fecha', buckets.sinFecha);
 
   renderMatrix();
   renderStats();
@@ -1069,6 +1155,8 @@ document.getElementById('tabs').addEventListener('click', (e)=>{
   render();
 });
 
+document.getElementById('dateFilter').addEventListener('change', render);
+
 function taskToText(t){
   const parts = [`📌 ${t.title}`];
   parts.push(catLabel(t.category));
@@ -1105,6 +1193,7 @@ function calendarLink(t){
 let gcalTokenClient = null;
 let gcalAccessToken = null;
 let gcalPartnerEmail = null;
+let lastGcalEvents = [];
 
 function initGoogleCalendar(){
   if(!window.google || !google.accounts || GOOGLE_CLIENT_ID.includes('PEGA_AQUI')) return;
@@ -1137,7 +1226,8 @@ async function fetchGoogleEvents(){
   if(!gcalAccessToken) return;
   try{
     const timeMin = new Date().toISOString();
-    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&maxResults=50&singleEvents=true&orderBy=startTime`;
+    const timeMax = new Date(Date.now() + 60*24*60*60*1000).toISOString(); // hasta 60 días adelante
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&maxResults=100&singleEvents=true&orderBy=startTime`;
     const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + gcalAccessToken } });
     if(!res.ok) throw new Error('Google respondió ' + res.status);
     const data = await res.json();
@@ -1146,7 +1236,8 @@ async function fetchGoogleEvents(){
     const shared = all.filter(ev =>
       (ev.attendees || []).some(a => (a.email || '').toLowerCase() === gcalPartnerEmail)
     );
-    renderGoogleEvents(shared);
+    lastGcalEvents = shared;
+    render();
   }catch(e){
     console.error('Error leyendo Google Calendar:', e);
     alert('No se pudo leer el calendario. Revisa la consola para más detalle.');
@@ -1188,9 +1279,10 @@ let pendingDelete = null;
 function deleteTaskWithUndo(t){
   if(pendingDelete){
     clearTimeout(pendingDelete.timeoutId);
-    saveTasks(); // confirma el borrado pendiente anterior antes de mostrar uno nuevo
+    pendingDelete = null;
   }
   tasks = tasks.filter(x => x.id !== t.id);
+  saveTasks(); // se guarda de inmediato para evitar conflictos con la sincronización en tiempo real
   render();
 
   const toast = document.getElementById('undoToast');
@@ -1210,77 +1302,85 @@ function deleteTaskWithUndo(t){
   const timeoutId = setTimeout(()=>{
     pendingDelete = null;
     toast.classList.remove('show');
-    saveTasks();
   }, 6000);
   pendingDelete = { task: t, timeoutId };
 }
 
-function renderGoogleEvents(events){
-  const section = document.getElementById('gcalSection');
-  const ggrid = document.getElementById('gcalGrid');
-  section.style.display = 'block';
-  ggrid.innerHTML = '';
+function buildEventCard(ev){
+  const card = document.createElement('div');
+  card.className = 'card gcal-card';
 
-  if(!events.length){
-    ggrid.innerHTML = '<div class="empty">No hay eventos próximos donde estén ambos invitados. 🎉</div>';
-    return;
-  }
+  const startRaw = ev.start.dateTime || ev.start.date;
+  const isAllDay = !ev.start.dateTime;
+  const startDate = new Date(startRaw);
+  const when = isAllDay
+    ? startDate.toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) + ' (todo el día)'
+    : startDate.toLocaleString('es-ES', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
 
-  events.forEach(ev=>{
-    const startRaw = ev.start.dateTime || ev.start.date;
-    const isAllDay = !ev.start.dateTime;
-    const startDate = new Date(startRaw);
-    const when = isAllDay
-      ? startDate.toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) + ' (todo el día)'
-      : startDate.toLocaleString('es-ES', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  const title = document.createElement('div');
+  title.className = 'title';
+  title.textContent = ev.summary || '(sin título)';
+  const due = document.createElement('div');
+  due.className = 'due';
+  due.textContent = '📆 ' + when;
+  card.appendChild(title);
+  card.appendChild(due);
 
-    const card = document.createElement('div');
-    card.className = 'card gcal-card';
-    const title = document.createElement('div');
-    title.className = 'title';
-    title.textContent = ev.summary || '(sin título)';
-    const due = document.createElement('div');
-    due.className = 'due';
-    due.textContent = '📆 ' + when;
-    card.appendChild(title);
-    card.appendChild(due);
+  const flags = { urgent:false, important:false };
+  const classifyRow = document.createElement('div');
+  classifyRow.className = 'classify-row';
 
-    const alreadyAdded = tasks.some(t => t.gcalId === ev.id);
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn btn-ghost';
-    addBtn.style.marginTop = '10px';
-    addBtn.style.fontSize = '0.75rem';
-    if(alreadyAdded){
-      addBtn.textContent = '✓ Ya está en tus pendientes';
-      addBtn.disabled = true;
-      addBtn.style.opacity = '0.6';
-    } else {
-      addBtn.textContent = '➕ Agregar como pendiente';
-      addBtn.addEventListener('click', ()=>{
-        tasks.push({
-          id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-          gcalId: ev.id,
-          title: ev.summary || '(sin título)',
-          category: 'admin',
-          assignee: 'ambos',
-          urgent: false,
-          important: false,
-          due: isAllDay ? null : toLocalInputValue(startDate),
-          isProject: false,
-          subtasks: [],
-          updates: [],
-          done: false,
-          createdAt: new Date().toISOString()
-        });
-        saveTasks();
-        render();
-        addBtn.textContent = '✓ Agregado';
-        addBtn.disabled = true;
-      });
-    }
-    card.appendChild(addBtn);
-    ggrid.appendChild(card);
+  const urgToggle = document.createElement('button');
+  urgToggle.type = 'button';
+  urgToggle.className = 'toggle-chip';
+  urgToggle.textContent = '🔥 Urgente';
+  urgToggle.addEventListener('click', ()=>{
+    flags.urgent = !flags.urgent;
+    urgToggle.classList.toggle('active', flags.urgent);
+    urgToggle.classList.toggle('urg', flags.urgent);
   });
+
+  const impToggle = document.createElement('button');
+  impToggle.type = 'button';
+  impToggle.className = 'toggle-chip';
+  impToggle.textContent = '❗ Importante';
+  impToggle.addEventListener('click', ()=>{
+    flags.important = !flags.important;
+    impToggle.classList.toggle('active', flags.important);
+    impToggle.classList.toggle('imp', flags.important);
+  });
+
+  classifyRow.appendChild(urgToggle);
+  classifyRow.appendChild(impToggle);
+  card.appendChild(classifyRow);
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-ghost event-add-btn';
+  addBtn.textContent = '➕ Agregar a pendientes';
+  addBtn.addEventListener('click', ()=>{
+    tasks.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      gcalId: ev.id,
+      title: ev.summary || '(sin título)',
+      category: 'admin',
+      assignee: 'ambos',
+      urgent: flags.urgent,
+      important: flags.important,
+      due: isAllDay ? null : toLocalInputValue(startDate),
+      isProject: false,
+      recurrence: 'none',
+      subtasks: [],
+      updates: [],
+      done: false,
+      completedAt: null,
+      createdAt: new Date().toISOString()
+    });
+    saveTasks();
+    render();
+  });
+  card.appendChild(addBtn);
+
+  return card;
 }
 
 window.addEventListener('load', initGoogleCalendar);
