@@ -463,6 +463,29 @@
     display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
     gap:12px; margin-bottom:20px;
   }
+  .fin-section-title{
+    font-family:'Kalam',cursive; font-size:1.05rem; color:#6b5a85;
+    margin:22px 0 10px;
+  }
+  .fin-section-title:first-child{margin-top:0;}
+
+  .fin-origen-picker{
+    display:flex; align-items:center; gap:8px; font-size:0.85rem; color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .fin-origen-picker select, #manualOrigen{
+    font-family:'Inter'; font-weight:600; font-size:0.82rem;
+    padding:6px 10px; border-radius:8px; border:1px solid #ded0ec; background:#fff;
+  }
+  .fin-manual-form{
+    background:var(--card); border:1px solid var(--card-edge); border-radius:12px;
+    padding:14px; display:flex; flex-direction:column; gap:8px;
+  }
+  .fin-manual-form input[type="text"], .fin-manual-form input[type="number"], .fin-manual-form input[type="date"]{
+    font-family:'Inter'; font-size:0.85rem; padding:9px 10px; border-radius:8px; border:1px solid #ded0ec;
+  }
+  .fin-manual-row{display:flex; gap:8px;}
+  .fin-manual-row > *{flex:1;}
   .fin-card{
     background:var(--card); border:1px solid var(--card-edge); border-radius:12px;
     padding:14px; text-align:center; box-shadow:0 6px 14px rgba(0,0,0,0.1);
@@ -712,11 +735,14 @@
     </div>
 
     <div id="finHistorico">
-      <div class="fin-summary-grid" id="finSummaryCards"></div>
-      <div class="fin-chart-wrap"><canvas id="finChart" height="230"></canvas></div>
+      <h4 class="fin-section-title">📌 Mes en curso</h4>
       <div class="fin-month-picker"><select id="finMonthSelect"></select></div>
       <div class="fin-hint" id="finTableHint" style="display:none;">👆 Doble click en una fila (o en una barra del gráfico) para ver el detalle y reclasificar</div>
       <table class="fin-table" id="finTable"></table>
+
+      <h4 class="fin-section-title">📊 Histórico 2026</h4>
+      <div class="fin-summary-grid" id="finSummaryCards"></div>
+      <div class="fin-chart-wrap"><canvas id="finChart" height="230"></canvas></div>
     </div>
 
     <div id="finCargar" style="display:none;">
@@ -726,11 +752,42 @@
         El sistema reconoce automáticamente los comercios que ya conoce; los nuevos quedan
         marcados en naranjo para que los clasifiques una vez — desde ahí en adelante los recuerda.
       </div>
+      <div class="fin-origen-picker">
+        <span>Origen de este archivo:</span>
+        <select id="finOrigenSelect">
+          <option value="Tarjeta de crédito">💳 Tarjeta de crédito</option>
+          <option value="Transferencia">🏦 Transferencia</option>
+          <option value="Otro">✏️ Otro</option>
+        </select>
+      </div>
       <input type="file" id="finFileInput" accept=".xlsx,.xls,.csv">
       <div id="finPreviewWrap" style="display:none;">
         <div class="fin-preview-summary" id="finPreviewSummary"></div>
         <table class="fin-table" id="finPreviewTable"></table>
         <button class="btn btn-primary" id="finSaveBtn">💾 Guardar en el histórico</button>
+      </div>
+
+      <h4 class="fin-section-title">✍️ O agrega un gasto suelto</h4>
+      <div class="fin-help">
+        Para cosas puntuales que no vienen en ningún archivo — como el arriendo o el dividendo
+        que pagan por transferencia.
+      </div>
+      <div class="fin-manual-form">
+        <input type="text" id="manualComercio" placeholder="Descripción (ej. Arriendo Lo Fontecilla)">
+        <div class="fin-manual-row">
+          <input type="number" id="manualMonto" placeholder="Monto" step="1000">
+          <input type="date" id="manualFecha">
+        </div>
+        <div class="fin-manual-row">
+          <select id="manualOrigen">
+            <option value="Transferencia">🏦 Transferencia</option>
+            <option value="Tarjeta de crédito">💳 Tarjeta de crédito</option>
+            <option value="Otro">✏️ Otro</option>
+          </select>
+        </div>
+        <div class="fin-manual-row" id="manualClasificacion"></div>
+        <button class="btn btn-primary" id="manualSaveBtn">💾 Agregar gasto</button>
+        <span class="saved-tag" id="manualSavedTag" style="display:none;">✓ Guardado</span>
       </div>
     </div>
 
@@ -811,6 +868,7 @@ const GRUPO_COLORS = {
   'VARIOS':'#a89685'
 };
 const MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESES_FULL = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 
 let finTx = [];              // todas las transacciones cargadas desde Supabase
 let finIds = new Set();      // ids ya guardados (para no duplicar al recargar un mes)
@@ -1783,10 +1841,10 @@ function renderFinHistorico(){
     if(!byPeriod.has(key)) byPeriod.set(key, {});
     byPeriod.get(key)[r.grupo] = (byPeriod.get(key)[r.grupo] || 0) + Number(r.monto || 0);
   });
-  const periods = Array.from(byPeriod.keys()).sort();
+  const periods = Array.from(byPeriod.keys()).filter(p => p.startsWith('2026')).sort();
   finChartPeriods = periods;
 
-  const totalGeneral = finTx.reduce((s,r)=>s+Number(r.monto||0),0);
+  const totalGeneral = finTx.filter(r=>r.fecha && periodKey(r.fecha).startsWith('2026')).reduce((s,r)=>s+Number(r.monto||0),0);
   const promedioMensual = periods.length ? Math.round(totalGeneral/periods.length) : 0;
   const ultimoPeriodo = periods.length ? periods[periods.length-1] : null;
 
@@ -2152,7 +2210,7 @@ function renderFinDetailModal(){
           <span class="com">${r.comercio || '—'}</span>
           <span class="monto">$${Math.round(r.monto||0).toLocaleString('es-CL')}</span>
         </div>
-        <div class="fin-detail-sub">${r.fecha ? new Date(r.fecha).toLocaleDateString('es-CL') : ''} ${r.categoria ? '· '+r.categoria : ''}</div>
+        <div class="fin-detail-sub">${r.fecha ? new Date(r.fecha).toLocaleDateString('es-CL') : ''} ${r.categoria ? '· '+r.categoria : ''} ${r.origen ? '· '+r.origen : ''}</div>
         <div class="fin-reclass-row">
           ${buildClassifySelectTx(r.grupo, r.item, r.id)}
           <button class="fin-reclass-save" data-id="${r.id}">Guardar</button>
@@ -2253,6 +2311,7 @@ document.getElementById('finFileInput').addEventListener('change', async (e)=>{
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { defval:null });
 
+  const origen = document.getElementById('finOrigenSelect').value;
   finPendingRows = rows.map(r=>{
     const comercio = getField(r,'comercio');
     const norm = normComercio(comercio);
@@ -2263,7 +2322,7 @@ document.getElementById('finFileInput').addEventListener('change', async (e)=>{
     const id = rawId != null ? String(rawId) : (norm + '-' + fecha + '-' + monto);
     return {
       id, mes: getField(r,'mes'), ciudad: getField(r,'ciudad'), fecha,
-      cuenta: getField(r,'cuenta'),
+      cuenta: getField(r,'cuenta'), origen,
       total: Number(getField(r,'total')) || null,
       tt_a_pagar: Number(getField(r,'tt_a_pagar')) || null,
       monto, categoria: getField(r,'categoria'), comercio,
@@ -2274,6 +2333,64 @@ document.getElementById('finFileInput').addEventListener('change', async (e)=>{
   }).filter(r => r.comercio || r.monto);
 
   renderFinPreview();
+});
+
+// ====== Finanzas TC: gasto manual (transferencias, etc.) ======
+function initManualForm(){
+  const wrap = document.getElementById('manualClasificacion');
+  const grupos = Object.keys(PRESUPUESTO_ITEMS);
+  wrap.innerHTML = `
+    <select id="manualGrupo">${grupos.map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+    <select id="manualItem"></select>
+  `;
+  const grupoSel = document.getElementById('manualGrupo');
+  const itemSel = document.getElementById('manualItem');
+  function fillItems(){
+    const items = PRESUPUESTO_ITEMS[grupoSel.value].filter(it => it !== 'Sin clasificar');
+    itemSel.innerHTML = items.map(it=>`<option value="${it}">${it}</option>`).join('');
+  }
+  grupoSel.addEventListener('change', fillItems);
+  fillItems();
+  document.getElementById('manualFecha').value = new Date().toISOString().slice(0,10);
+}
+initManualForm();
+
+document.getElementById('manualSaveBtn').addEventListener('click', async ()=>{
+  const client = getClient();
+  if(!client){ alert('Falta configurar Supabase.'); return; }
+  const comercio = document.getElementById('manualComercio').value.trim();
+  const monto = Number(document.getElementById('manualMonto').value) || 0;
+  const fecha = document.getElementById('manualFecha').value;
+  const origen = document.getElementById('manualOrigen').value;
+  const grupo = document.getElementById('manualGrupo').value;
+  const item = document.getElementById('manualItem').value;
+  if(!comercio || !monto || !fecha){ alert('Completa descripción, monto y fecha.'); return; }
+
+  const id = 'manual-' + fecha + '-' + normComercio(comercio) + '-' + Date.now();
+  const row = {
+    id, mes: MESES_FULL[new Date(fecha).getMonth()], ciudad: null, fecha,
+    cuenta: comercio, origen, total: monto, tt_a_pagar: monto, monto,
+    categoria: 'Manual', comercio, grupo, item
+  };
+
+  try{
+    const { error: e1 } = await client.from(FIN_TABLE).upsert(row, { onConflict:'id' });
+    if(e1) throw e1;
+    const { error: e2 } = await client.from(MAP_TABLE).upsert(
+      { comercio, categoria:'Manual', grupo, item, updated_at: new Date().toISOString() },
+      { onConflict:'comercio' }
+    );
+    if(e2) throw e2;
+
+    document.getElementById('manualSavedTag').style.display = 'inline';
+    setTimeout(()=>{ document.getElementById('manualSavedTag').style.display = 'none'; }, 2000);
+    document.getElementById('manualComercio').value = '';
+    document.getElementById('manualMonto').value = '';
+    await loadFinanzas();
+  }catch(e){
+    console.error('No se pudo guardar el gasto manual:', e);
+    alert('No se pudo guardar. Revisa la consola para más detalle.');
+  }
 });
 
 function buildClassifySelect(r,i){
