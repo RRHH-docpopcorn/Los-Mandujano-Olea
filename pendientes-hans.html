@@ -782,6 +782,14 @@
           <option value="Otro">✏️ Otro</option>
         </select>
       </div>
+      <div class="fin-origen-picker">
+        <span>Mes que están pagando (el de la boleta/estado de cuenta):</span>
+        <input type="month" id="finPeriodoInput">
+      </div>
+      <div class="fin-help" style="margin-top:6px;">
+        Ojo: esto es distinto a la fecha de la compra. Si algo quedó en cuotas, todas sus cuotas
+        se guardan en el mes que elijas aquí — no en la fecha original de la compra.
+      </div>
       <input type="file" id="finFileInput" accept=".xlsx,.xls,.csv">
       <div id="finPreviewWrap" style="display:none;">
         <div class="fin-preview-summary" id="finPreviewSummary"></div>
@@ -1850,6 +1858,10 @@ function periodKey(fechaStr){
   const d = new Date(fechaStr);
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
 }
+function txPeriodo(r){
+  // usa el mes de FACTURACIÓN guardado en la fila; si no existe (dato antiguo), cae a la fecha
+  return r.periodo || (r.fecha ? periodKey(r.fecha) : null);
+}
 function periodLabel(key){
   const [y,m] = key.split('-');
   return MESES_ES[parseInt(m,10)-1] + ' ' + y;
@@ -1858,15 +1870,15 @@ function periodLabel(key){
 function renderFinHistorico(){
   const byPeriod = new Map();
   finTx.forEach(r=>{
-    if(!r.fecha) return;
-    const key = periodKey(r.fecha);
+    const key = txPeriodo(r);
+    if(!key) return;
     if(!byPeriod.has(key)) byPeriod.set(key, {});
     byPeriod.get(key)[r.grupo] = (byPeriod.get(key)[r.grupo] || 0) + Number(r.monto || 0);
   });
   const periods = Array.from(byPeriod.keys()).filter(p => p.startsWith('2026')).sort();
   finChartPeriods = periods;
 
-  const totalGeneral = finTx.filter(r=>r.fecha && periodKey(r.fecha).startsWith('2026')).reduce((s,r)=>s+Number(r.monto||0),0);
+  const totalGeneral = finTx.filter(r=>txPeriodo(r) && txPeriodo(r).startsWith('2026')).reduce((s,r)=>s+Number(r.monto||0),0);
   const promedioMensual = periods.length ? Math.round(totalGeneral/periods.length) : 0;
   const ultimoPeriodo = periods.length ? periods[periods.length-1] : null;
 
@@ -1875,7 +1887,7 @@ function renderFinHistorico(){
       const v = ultimoPeriodo ? getPresupuestoValor(ultimoPeriodo, grupo, itemKey) : null;
       return s2 + (v ? v.monto : 0);
     }, 0), 0);
-  const realUltimoMes = ultimoPeriodo ? finTx.filter(r=>r.fecha && periodKey(r.fecha)===ultimoPeriodo).reduce((s,r)=>s+Number(r.monto||0),0) : 0;
+  const realUltimoMes = ultimoPeriodo ? finTx.filter(r=>txPeriodo(r)===ultimoPeriodo).reduce((s,r)=>s+Number(r.monto||0),0) : 0;
   const pctCumplimiento = totalPresupuesto ? Math.round(realUltimoMes/totalPresupuesto*100) : null;
 
   document.getElementById('finSummaryCards').innerHTML = `
@@ -1956,7 +1968,7 @@ function renderFinTable(periodo){
   const table = document.getElementById('finTable');
   const hint = document.getElementById('finTableHint');
   if(!periodo){ table.innerHTML=''; return; }
-  const rows = finTx.filter(r => r.fecha && periodKey(r.fecha) === periodo);
+  const rows = finTx.filter(r => txPeriodo(r) === periodo);
 
   const realByKey = new Map();
   rows.forEach(r=>{
@@ -2277,7 +2289,7 @@ function closeFinModal(){
 function renderFinDetailModal(){
   if(!currentDetailFilter) return;
   const { periodo, grupo, item } = currentDetailFilter;
-  const rows = finTx.filter(r => r.fecha && periodKey(r.fecha)===periodo && (!grupo || r.grupo===grupo) && (!item || r.item===item))
+  const rows = finTx.filter(r => txPeriodo(r)===periodo && (!grupo || r.grupo===grupo) && (!item || r.item===item))
                      .sort((a,b)=> new Date(b.fecha) - new Date(a.fecha));
   const total = rows.reduce((s,r)=>s+Number(r.monto||0),0);
 
@@ -2384,6 +2396,8 @@ function toISODate(v){
 document.getElementById('finFileInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
+  const periodoInput = document.getElementById('finPeriodoInput').value; // "YYYY-MM"
+  if(!periodoInput){ alert('Elige primero el mes que están pagando (arriba del botón de archivo).'); e.target.value=''; return; }
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type:'array', cellDates:true });
   const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -2397,9 +2411,9 @@ document.getElementById('finFileInput').addEventListener('change', async (e)=>{
     const fecha = toISODate(getField(r,'fecha'));
     const monto = Number(getField(r,'monto')) || 0;
     const rawId = getField(r,'id');
-    const id = rawId != null ? String(rawId) : (norm + '-' + fecha + '-' + monto);
+    const id = rawId != null ? String(rawId) : (norm + '-' + periodoInput + '-' + monto + '-' + Math.random().toString(36).slice(2,7));
     return {
-      id, mes: getField(r,'mes'), ciudad: getField(r,'ciudad'), fecha,
+      id, mes: getField(r,'mes'), ciudad: getField(r,'ciudad'), fecha, periodo: periodoInput,
       cuenta: getField(r,'cuenta'), origen,
       total: Number(getField(r,'total')) || null,
       tt_a_pagar: Number(getField(r,'tt_a_pagar')) || null,
@@ -2430,6 +2444,8 @@ function initManualForm(){
   grupoSel.addEventListener('change', fillItems);
   fillItems();
   document.getElementById('manualFecha').value = new Date().toISOString().slice(0,10);
+  const periodoInput = document.getElementById('finPeriodoInput');
+  if(periodoInput && !periodoInput.value) periodoInput.value = new Date().toISOString().slice(0,7);
 }
 initManualForm();
 
@@ -2446,7 +2462,7 @@ document.getElementById('manualSaveBtn').addEventListener('click', async ()=>{
 
   const id = 'manual-' + fecha + '-' + normComercio(comercio) + '-' + Date.now();
   const row = {
-    id, mes: MESES_FULL[new Date(fecha).getMonth()], ciudad: null, fecha,
+    id, mes: MESES_FULL[new Date(fecha).getMonth()], ciudad: null, fecha, periodo: fecha.slice(0,7),
     cuenta: comercio, origen, total: monto, tt_a_pagar: monto, monto,
     categoria: 'Manual', comercio, grupo, item
   };
