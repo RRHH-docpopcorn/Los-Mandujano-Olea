@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link rel="manifest" href="manifest-yo.json">
 <meta name="theme-color" content="#6b5a85">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -431,6 +433,148 @@
     .matrix-grid{grid-template-columns:1fr;}
     header h1{font-size:1.9rem;}
   }
+
+  /* ====== Finanzas TC ====== */
+  .view-switch{
+    display:flex; justify-content:center; gap:8px; margin:0 0 18px;
+  }
+  .view-tab{
+    font-family:'Kalam',cursive;
+    font-size:1.05rem; font-weight:700;
+    padding:9px 20px; border-radius:16px;
+    border:2px solid rgba(107,90,133,0.3);
+    background:rgba(255,255,255,0.4); color:#6b5a85;
+    cursor:pointer; transition:.15s;
+  }
+  .view-tab.active{background:#6b5a85; color:#fffaf3; border-color:#6b5a85;}
+  .view-tab:hover{transform:translateY(-1px);}
+
+  .fin-subtabs{display:flex; gap:8px; justify-content:center; margin-bottom:20px;}
+  .fin-subtab{
+    font-family:'Inter'; font-weight:600; font-size:0.85rem;
+    padding:8px 14px; border-radius:20px;
+    border:2px solid rgba(143,107,191,0.3);
+    background:rgba(255,255,255,0.35); color:var(--admin);
+    cursor:pointer; transition:.15s;
+  }
+  .fin-subtab.active{background:var(--admin); color:#fff; border-color:var(--admin);}
+
+  .fin-summary-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:12px; margin-bottom:20px;
+  }
+  .fin-card{
+    background:var(--card); border:1px solid var(--card-edge); border-radius:12px;
+    padding:14px; text-align:center; box-shadow:0 6px 14px rgba(0,0,0,0.1);
+  }
+  .fin-card .num{font-family:'Kalam',cursive; font-size:1.6rem; color:var(--ink); line-height:1.1;}
+  .fin-card .lbl{font-size:0.72rem; color:var(--ink-soft); margin-top:4px;}
+  .fin-card.alert .num{color:#c96a52;}
+
+  .fin-chart-wrap{
+    background:var(--card); border:1px solid var(--card-edge); border-radius:14px;
+    padding:16px; margin-bottom:20px;
+  }
+
+  .fin-month-picker{display:flex; justify-content:center; margin-bottom:12px;}
+  .fin-month-picker select{
+    font-family:'Inter'; font-weight:600; font-size:0.85rem;
+    padding:8px 14px; border-radius:20px; border:2px solid rgba(107,90,133,0.3);
+    background:#fff; color:var(--ink); cursor:pointer;
+  }
+
+  table.fin-table{
+    width:100%; border-collapse:collapse; background:var(--card);
+    border-radius:12px; overflow:hidden; box-shadow:0 6px 14px rgba(0,0,0,0.08);
+    font-size:0.85rem; margin-bottom:16px;
+  }
+  table.fin-table th, table.fin-table td{
+    padding:9px 12px; text-align:left; border-bottom:1px solid var(--card-edge);
+  }
+  table.fin-table th{background:#f6f1fb; color:#6b5a85; font-size:0.75rem; text-transform:uppercase; letter-spacing:.03em;}
+  table.fin-table td.num{text-align:right; font-variant-numeric:tabular-nums;}
+  table.fin-table tr.total-row td{font-weight:700; background:#f9f6fc;}
+  .grupo-dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px;}
+
+  .fin-help{
+    background:#f5e9d6; color:#5a4630; border:1px solid #eddcb8;
+    border-radius:12px; padding:12px 16px; font-size:0.85rem; margin-bottom:14px;
+  }
+  #finFileInput{
+    font-family:'Inter'; font-size:0.85rem; padding:10px; border-radius:10px;
+    border:2px dashed rgba(107,90,133,0.35); background:#fff; width:100%; cursor:pointer;
+  }
+  .fin-preview-summary{
+    display:flex; flex-wrap:wrap; gap:14px; margin:16px 0; font-size:0.85rem; color:var(--ink-soft);
+  }
+  .fin-preview-summary strong{color:var(--ink);}
+  select.fin-classify{
+    font-family:'Inter'; font-size:0.78rem; padding:4px 6px; border-radius:6px;
+    border:1px solid #ded0ec; background:#fff;
+  }
+  tr.needs-review{background:#fdf1ea;}
+  tr.needs-review select.fin-classify{border-color:#c96a52;}
+  tr.duplicate-row{opacity:0.45;}
+  .fin-tag-nuevo{
+    font-size:0.68rem; font-weight:700; color:#fff; background:#4ea883;
+    border-radius:8px; padding:1px 6px; margin-left:6px;
+  }
+
+  .pres-group{
+    background:var(--card); border:1px solid var(--card-edge); border-radius:12px;
+    padding:12px 14px; margin-bottom:14px; box-shadow:0 6px 14px rgba(0,0,0,0.08);
+  }
+  .pres-group-head{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'Kalam',cursive; font-size:1.05rem; margin-bottom:8px;
+  }
+  .pres-group-total{font-family:'Inter'; font-size:0.85rem; color:var(--ink-soft); font-weight:600;}
+  .pres-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 0; border-top:1px solid var(--card-edge); font-size:0.85rem;
+  }
+  .pres-row:first-of-type{border-top:none;}
+  .pres-input-wrap{display:flex; align-items:center; gap:4px;}
+  .pres-input-wrap span{color:var(--ink-soft); font-size:0.8rem;}
+  input.pres-input{
+    font-family:'Inter'; font-weight:600; font-size:0.85rem;
+    width:110px; padding:6px 8px; border-radius:8px; border:1px solid #ded0ec;
+    text-align:right;
+  }
+  input.pres-input.saved{border-color:#4ea883; background:#f2fbf6;}
+
+  tr.fin-row{cursor:pointer;}
+  tr.fin-row:hover{background:#f6f1fb;}
+  .fin-hint{text-align:center; font-size:0.72rem; color:var(--ink-soft); margin:-8px 0 12px;}
+
+  .fin-modal-overlay{
+    position:fixed; inset:0; background:rgba(43,33,56,0.55);
+    display:flex; align-items:center; justify-content:center; z-index:200; padding:16px;
+  }
+  .fin-modal{
+    background:var(--panel); border-radius:18px; max-width:560px; width:100%;
+    max-height:85vh; overflow-y:auto; padding:18px 16px 20px;
+    box-shadow:0 20px 45px rgba(0,0,0,0.35);
+  }
+  .fin-modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:12px; position:sticky; top:-18px; background:var(--panel); padding-top:4px;
+  }
+  .fin-modal-head h3{font-family:'Kalam',cursive; margin:0; color:#6b5a85; font-size:1.2rem;}
+  .fin-detail-row{
+    background:var(--card); border:1px solid var(--card-edge); border-radius:10px;
+    padding:10px 12px; margin-bottom:8px; font-size:0.85rem;
+  }
+  .fin-detail-top{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .fin-detail-top .com{font-weight:700;}
+  .fin-detail-top .monto{font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .fin-detail-sub{color:var(--ink-soft); font-size:0.75rem; margin-top:2px;}
+  .fin-reclass-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; align-items:center;}
+  .fin-reclass-row button{
+    font-family:'Inter'; font-weight:600; font-size:0.72rem;
+    padding:5px 10px; border-radius:8px; border:none; background:var(--admin); color:#fff; cursor:pointer;
+  }
+  .fin-reclass-row .saved-tag{font-size:0.72rem; color:#4ea883; font-weight:700;}
 </style>
 </head>
 <body>
@@ -442,6 +586,12 @@
     <p style="font-size:0.75rem; opacity:0.6; margin-top:2px;">(esta es tu vista — Yo)</p>
   </header>
 
+  <div class="view-switch" id="viewSwitch">
+    <button class="view-tab active" data-view="pendientes">🧷 Pendientes</button>
+    <button class="view-tab" data-view="finanzas">💳 Finanzas TC</button>
+  </div>
+
+  <div id="viewPendientes">
   <div class="toprow">
     <button class="btn btn-ghost" id="notifBtn">🔔 Activar avisos en este dispositivo</button>
     <button class="btn btn-wsp" id="summaryWspBtn">📲 Enviar resumen de hoy por WhatsApp</button>
@@ -523,6 +673,57 @@
     <h2 class="section-title">📊 Esta semana</h2>
     <div class="stats-grid" id="statsGrid"></div>
   </section>
+  </div><!-- /viewPendientes -->
+
+  <div id="viewFinanzas" style="display:none;">
+    <div class="fin-subtabs" id="finSubtabs">
+      <button class="fin-subtab active" data-finview="historico">📊 Histórico</button>
+      <button class="fin-subtab" data-finview="cargar">⬆️ Cargar mes nuevo</button>
+      <button class="fin-subtab" data-finview="presupuesto">📝 Presupuesto</button>
+    </div>
+
+    <div id="finHistorico">
+      <div class="fin-summary-grid" id="finSummaryCards"></div>
+      <div class="fin-chart-wrap"><canvas id="finChart" height="230"></canvas></div>
+      <div class="fin-month-picker"><select id="finMonthSelect"></select></div>
+      <div class="fin-hint" id="finTableHint" style="display:none;">👆 Doble click en una fila (o en una barra del gráfico) para ver el detalle y reclasificar</div>
+      <table class="fin-table" id="finTable"></table>
+    </div>
+
+    <div id="finCargar" style="display:none;">
+      <div class="fin-help">
+        Sube el Excel o CSV del mes con las mismas columnas de siempre
+        (<strong>MES, FECHA, ID, CUENTA, TOTAL, TT A PAGAR, MONTO, Categoría, Comercio</strong>).
+        El sistema reconoce automáticamente los comercios que ya conoce; los nuevos quedan
+        marcados en naranjo para que los clasifiques una vez — desde ahí en adelante los recuerda.
+      </div>
+      <input type="file" id="finFileInput" accept=".xlsx,.xls,.csv">
+      <div id="finPreviewWrap" style="display:none;">
+        <div class="fin-preview-summary" id="finPreviewSummary"></div>
+        <table class="fin-table" id="finPreviewTable"></table>
+        <button class="btn btn-primary" id="finSaveBtn">💾 Guardar en el histórico</button>
+      </div>
+    </div>
+
+    <div id="finPresupuesto" style="display:none;">
+      <div class="fin-help">
+        Estos son los montos mensuales presupuestados. Edítalos aquí — se guardan solos al salir del campo
+        y son los que se usan para comparar contra el gasto real en la pestaña "Histórico".
+      </div>
+      <div id="finPresupuestoWrap"></div>
+      <div class="fin-preview-summary" id="finPresupuestoTotal"></div>
+    </div>
+  </div><!-- /viewFinanzas -->
+
+  <div class="fin-modal-overlay" id="finModalOverlay" style="display:none;">
+    <div class="fin-modal">
+      <div class="fin-modal-head">
+        <h3 id="finModalTitle">Detalle</h3>
+        <button class="icon-btn" id="finModalClose">✕</button>
+      </div>
+      <div id="finModalBody"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -549,6 +750,48 @@ const GOOGLE_CLIENT_ID = '246221194381-tups484imcku1qhopqqmv8gckhlf1hjn.apps.goo
 //    (donde el otro está invitado), pega aquí el correo de Google de Hans:
 const CORREO_PAREJA = 'hansmandujano@gmail.com';
 // ==========================================
+
+// ====== Finanzas TC ======
+const FIN_TABLE = 'tc_transacciones';
+const MAP_TABLE = 'tc_comercio_categoria';
+const PRES_TABLE = 'tc_presupuesto';
+
+const PRESUPUESTO_ITEMS = {
+  'CASA': ['Arriendo Lo Fontecilla','Delta Dividendo Vespucio','Gastos Comunes','Contribuciones','Supermercado','Carnicería','Verdulería','Farmacia','Todo Alemana','Luz','Agua','Gas','Internet','Uber Auto Sole','Compras arreglo casa','Nana'],
+  'EDUCACIÓN EMI': ['Colegio','Taller','Seguro Universidad','Hockey','Gimnasia','Ballet'],
+  'AUTO': ['Bencina','Estacionamiento','Autopista','Seguro','Mantención','Patente'],
+  'RECREACIÓN': ['Uber Comida','Restaurantes','Otros'],
+  'SALUD Y BIENESTAR': ['Salud','Bienestar/Spa'],
+  'VIAJES': ['Vacaciones'],
+  'SEGUROS': ['Seguros'],
+  'COMPRAS Y VESTUARIO': ['Marketplace','Vestuario','Retail','Infantil','Deporte'],
+  'OCIO Y REGALOS': ['Regalos','Suscripciones','Cafetería'],
+  'VARIOS': ['Administrativo','Otros','Empresa','Sin clasificar']
+};
+const GRUPO_COLORS = {
+  'CASA':'#e2874f',
+  'EDUCACIÓN EMI':'#4ea883',
+  'AUTO':'#7fa8d9',
+  'RECREACIÓN':'#8f6bbf',
+  'SALUD Y BIENESTAR':'#c96a52',
+  'VIAJES':'#8fb8e0',
+  'SEGUROS':'#b79bd9',
+  'COMPRAS Y VESTUARIO':'#f0c975',
+  'OCIO Y REGALOS':'#e8896f',
+  'VARIOS':'#a89685'
+};
+const MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+let finTx = [];              // todas las transacciones cargadas desde Supabase
+let finIds = new Set();      // ids ya guardados (para no duplicar al recargar un mes)
+let comercioMap = new Map(); // comercio normalizado -> {categoria,grupo,item}
+let finPendingRows = [];     // filas parseadas del archivo, a la espera de guardarse
+let presupuestoMap = new Map(); // "grupo | item" -> monto_mensual
+let finChartInstance = null;
+let finChartPeriods = [];
+let currentPeriodo = null;
+let currentDetailFilter = null;
+let finLoaded = false;
 
 let tasks = [];
 let filter = 'todos';
@@ -1437,6 +1680,498 @@ function checkReminders(){
 // con un refresco de respaldo cada 60s por si el canal en tiempo real se corta.
 setInterval(checkReminders, 30000);
 setInterval(loadTasks, 60000);
+
+// ====== Finanzas TC: carga de datos ======
+function normComercio(s){ return String(s||'').trim().toUpperCase(); }
+
+async function loadComercioMap(){
+  const client = getClient();
+  if(!client) return;
+  const { data, error } = await client.from(MAP_TABLE).select('*');
+  if(error){ console.error('Error cargando comercio_categoria:', error); return; }
+  comercioMap = new Map();
+  (data || []).forEach(r => comercioMap.set(normComercio(r.comercio), r));
+}
+
+async function loadFinTransacciones(){
+  const client = getClient();
+  if(!client) return;
+  const { data, error } = await client.from(FIN_TABLE).select('*').order('fecha', { ascending:true });
+  if(error){ console.error('Error cargando tc_transacciones:', error); return; }
+  finTx = data || [];
+  finIds = new Set(finTx.map(r => String(r.id)));
+}
+
+async function loadPresupuesto(){
+  const client = getClient();
+  if(!client) return;
+  const { data, error } = await client.from(PRES_TABLE).select('*');
+  if(error){ console.error('Error cargando tc_presupuesto:', error); return; }
+  presupuestoMap = new Map();
+  (data || []).forEach(r => presupuestoMap.set(r.grupo + ' | ' + r.item, Number(r.monto_mensual) || 0));
+}
+
+async function loadFinanzas(){
+  const client = getClient();
+  if(!client) return;
+  await Promise.all([loadFinTransacciones(), loadComercioMap(), loadPresupuesto()]);
+  finLoaded = true;
+  renderFinHistorico();
+  renderPresupuestoTab();
+}
+
+function periodKey(fechaStr){
+  const d = new Date(fechaStr);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function periodLabel(key){
+  const [y,m] = key.split('-');
+  return MESES_ES[parseInt(m,10)-1] + ' ' + y;
+}
+
+function renderFinHistorico(){
+  const byPeriod = new Map();
+  finTx.forEach(r=>{
+    if(!r.fecha) return;
+    const key = periodKey(r.fecha);
+    if(!byPeriod.has(key)) byPeriod.set(key, {});
+    byPeriod.get(key)[r.grupo] = (byPeriod.get(key)[r.grupo] || 0) + Number(r.monto || 0);
+  });
+  const periods = Array.from(byPeriod.keys()).sort();
+  finChartPeriods = periods;
+
+  const totalGeneral = finTx.reduce((s,r)=>s+Number(r.monto||0),0);
+  const promedioMensual = periods.length ? Math.round(totalGeneral/periods.length) : 0;
+  const ultimoPeriodo = periods.length ? periods[periods.length-1] : null;
+
+  const totalPresupuesto = Array.from(presupuestoMap.values()).reduce((s,v)=>s+v,0);
+  const realUltimoMes = ultimoPeriodo ? finTx.filter(r=>r.fecha && periodKey(r.fecha)===ultimoPeriodo).reduce((s,r)=>s+Number(r.monto||0),0) : 0;
+  const pctCumplimiento = totalPresupuesto ? Math.round(realUltimoMes/totalPresupuesto*100) : null;
+
+  document.getElementById('finSummaryCards').innerHTML = `
+    <div class="fin-card"><div class="num">$${Math.round(totalGeneral).toLocaleString('es-CL')}</div><div class="lbl">Total histórico</div></div>
+    <div class="fin-card"><div class="num">$${promedioMensual.toLocaleString('es-CL')}</div><div class="lbl">Promedio mensual</div></div>
+    <div class="fin-card"><div class="num">${periods.length}</div><div class="lbl">Meses cargados</div></div>
+    <div class="fin-card ${pctCumplimiento>100?'alert':''}"><div class="num">${pctCumplimiento!=null ? pctCumplimiento+'%' : '—'}</div><div class="lbl">Gastado del presupuesto (${ultimoPeriodo?periodLabel(ultimoPeriodo):'—'})</div></div>
+  `;
+
+  const grupos = Object.keys(GRUPO_COLORS);
+  const datasets = grupos.map(g => ({
+    label: g,
+    backgroundColor: GRUPO_COLORS[g],
+    data: periods.map(p => Math.round((byPeriod.get(p)[g] || 0)))
+  }));
+  const ctx = document.getElementById('finChart');
+  if(finChartInstance) finChartInstance.destroy();
+  finChartInstance = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: periods.map(periodLabel), datasets },
+    options:{
+      responsive:true,
+      scales:{ x:{ stacked:true }, y:{ stacked:true, ticks:{ callback:v=>'$'+Number(v).toLocaleString('es-CL') } } },
+      plugins:{ legend:{ position:'bottom', labels:{ font:{ family:'Inter' }, boxWidth:10 } } }
+    }
+  });
+
+  const sel = document.getElementById('finMonthSelect');
+  const prevValue = sel.value;
+  sel.innerHTML = periods.map(p => `<option value="${p}">${periodLabel(p)}</option>`).join('');
+  sel.value = periods.includes(prevValue) ? prevValue : ultimoPeriodo;
+  sel.onchange = () => renderFinTable(sel.value);
+  if(ultimoPeriodo) renderFinTable(sel.value || ultimoPeriodo);
+}
+
+function renderFinTable(periodo){
+  currentPeriodo = periodo;
+  const table = document.getElementById('finTable');
+  const hint = document.getElementById('finTableHint');
+  if(!periodo){ table.innerHTML=''; return; }
+  const rows = finTx.filter(r => r.fecha && periodKey(r.fecha) === periodo);
+  const byItem = new Map();
+  rows.forEach(r=>{
+    const k = (r.grupo||'—') + ' · ' + (r.item||'—');
+    if(!byItem.has(k)) byItem.set(k, { grupo:r.grupo, item:r.item, total:0, n:0 });
+    const e = byItem.get(k);
+    e.total += Number(r.monto||0);
+    e.n += 1;
+  });
+  const list = Array.from(byItem.values()).sort((a,b)=>b.total-a.total);
+  const totalMes = list.reduce((s,e)=>s+e.total,0);
+  const totalPres = list.reduce((s,e)=>s + (presupuestoMap.get(e.grupo+' | '+e.item) || 0), 0);
+  table.innerHTML = `
+    <tr><th>Grupo</th><th>Ítem</th><th class="num">Mov.</th><th class="num">Presupuesto</th><th class="num">Real</th><th class="num">Diferencia</th></tr>
+    ${list.map(e=>{
+      const pres = presupuestoMap.get(e.grupo+' | '+e.item) || 0;
+      const diff = pres - e.total;
+      const diffColor = diff < 0 ? '#c96a52' : '#4ea883';
+      return `
+      <tr class="fin-row" data-grupo="${e.grupo||''}" data-item="${e.item||''}">
+        <td><span class="grupo-dot" style="background:${GRUPO_COLORS[e.grupo]||'#ccc'}"></span>${e.grupo||'—'}</td>
+        <td>${e.item||'—'}</td>
+        <td class="num">${e.n}</td>
+        <td class="num">${pres ? '$'+Math.round(pres).toLocaleString('es-CL') : '—'}</td>
+        <td class="num">$${Math.round(e.total).toLocaleString('es-CL')}</td>
+        <td class="num" style="color:${pres?diffColor:'#bbb'}">${pres ? (diff<0?'-$':'+$')+Math.abs(Math.round(diff)).toLocaleString('es-CL') : '—'}</td>
+      </tr>`;
+    }).join('')}
+    <tr class="total-row"><td colspan="3">Total del mes</td><td class="num">$${Math.round(totalPres).toLocaleString('es-CL')}</td><td class="num">$${Math.round(totalMes).toLocaleString('es-CL')}</td><td class="num">${(totalPres-totalMes)<0?'-$':'+$'}${Math.abs(Math.round(totalPres-totalMes)).toLocaleString('es-CL')}</td></tr>
+  `;
+  if(hint) hint.style.display = list.length ? 'block' : 'none';
+  table.querySelectorAll('tr.fin-row').forEach(tr=>{
+    tr.addEventListener('dblclick', ()=> openFinDetail(currentPeriodo, tr.dataset.grupo, tr.dataset.item));
+  });
+}
+
+// ====== Finanzas TC: presupuesto editable ======
+function renderPresupuestoTab(){
+  const wrap = document.getElementById('finPresupuestoWrap');
+  let granTotal = 0;
+  wrap.innerHTML = Object.keys(PRESUPUESTO_ITEMS).map(grupo=>{
+    const items = PRESUPUESTO_ITEMS[grupo].filter(it => it !== 'Sin clasificar');
+    let groupTotal = 0;
+    const rowsHtml = items.map(item=>{
+      const key = grupo+' | '+item;
+      const val = presupuestoMap.get(key) || 0;
+      groupTotal += val;
+      return `
+        <div class="pres-row">
+          <span>${item}</span>
+          <div class="pres-input-wrap">
+            <span>$</span>
+            <input type="number" class="pres-input" data-grupo="${grupo}" data-item="${item}" value="${val}" step="1000">
+          </div>
+        </div>`;
+    }).join('');
+    granTotal += groupTotal;
+    return `
+      <div class="pres-group">
+        <div class="pres-group-head">
+          <span><span class="grupo-dot" style="background:${GRUPO_COLORS[grupo]}"></span>${grupo}</span>
+          <span class="pres-group-total">$${Math.round(groupTotal).toLocaleString('es-CL')}/mes</span>
+        </div>
+        ${rowsHtml}
+      </div>`;
+  }).join('');
+
+  document.getElementById('finPresupuestoTotal').innerHTML =
+    `<span>Presupuesto mensual total: <strong>$${Math.round(granTotal).toLocaleString('es-CL')}</strong></span>`;
+
+  wrap.querySelectorAll('input.pres-input').forEach(inp=>{
+    let t = null;
+    inp.addEventListener('input', ()=>{
+      inp.classList.remove('saved');
+      clearTimeout(t);
+      t = setTimeout(()=> savePresupuestoItem(inp), 700);
+    });
+    inp.addEventListener('blur', ()=>{ clearTimeout(t); savePresupuestoItem(inp); });
+  });
+}
+
+async function savePresupuestoItem(inp){
+  const client = getClient();
+  if(!client) return;
+  const grupo = inp.dataset.grupo, item = inp.dataset.item;
+  const monto = Number(inp.value) || 0;
+  presupuestoMap.set(grupo+' | '+item, monto);
+  try{
+    const { error } = await client.from(PRES_TABLE).upsert(
+      { id: grupo+' | '+item, grupo, item, monto_mensual: monto, updated_at: new Date().toISOString() },
+      { onConflict:'id' }
+    );
+    if(error) throw error;
+    inp.classList.add('saved');
+    const groupBox = inp.closest('.pres-group');
+    if(groupBox){
+      const groupTotal = Array.from(groupBox.querySelectorAll('input.pres-input')).reduce((s,i)=>s+(Number(i.value)||0),0);
+      groupBox.querySelector('.pres-group-total').textContent = `$${Math.round(groupTotal).toLocaleString('es-CL')}/mes`;
+    }
+    const granTotal = Array.from(document.querySelectorAll('input.pres-input')).reduce((s,i)=>s+(Number(i.value)||0),0);
+    document.getElementById('finPresupuestoTotal').innerHTML =
+      `<span>Presupuesto mensual total: <strong>$${Math.round(granTotal).toLocaleString('es-CL')}</strong></span>`;
+  }catch(e){
+    console.error('No se pudo guardar el presupuesto:', e);
+  }
+}
+
+// ====== Finanzas TC: detalle (doble click) y reclasificación puntual ======
+function buildClassifySelectTx(grupo, item, txId){
+  const grupos = Object.keys(PRESUPUESTO_ITEMS);
+  const grupoSel = `<select class="fin-classify fin-grupo-tx" data-txid="${txId}">
+    ${grupos.map(g=>`<option value="${g}" ${grupo===g?'selected':''}>${g}</option>`).join('')}
+  </select>`;
+  const items = PRESUPUESTO_ITEMS[grupo] || [];
+  const itemSel = `<select class="fin-classify fin-item-tx" data-txid="${txId}">
+    ${items.map(it=>`<option value="${it}" ${item===it?'selected':''}>${it}</option>`).join('')}
+  </select>`;
+  return grupoSel + ' ' + itemSel;
+}
+
+function openFinDetail(periodo, grupo, item){
+  if(!periodo || !grupo) return;
+  currentDetailFilter = { periodo, grupo, item: item || null };
+  renderFinDetailModal();
+  document.getElementById('finModalOverlay').style.display = 'flex';
+}
+
+function closeFinModal(){
+  document.getElementById('finModalOverlay').style.display = 'none';
+  currentDetailFilter = null;
+}
+
+function renderFinDetailModal(){
+  if(!currentDetailFilter) return;
+  const { periodo, grupo, item } = currentDetailFilter;
+  const rows = finTx.filter(r => r.fecha && periodKey(r.fecha)===periodo && r.grupo===grupo && (!item || r.item===item))
+                     .sort((a,b)=> new Date(b.fecha) - new Date(a.fecha));
+  const total = rows.reduce((s,r)=>s+Number(r.monto||0),0);
+
+  document.getElementById('finModalTitle').textContent = `${grupo}${item ? ' · '+item : ''} — ${periodLabel(periodo)}`;
+  const body = document.getElementById('finModalBody');
+  body.innerHTML = `
+    <div class="fin-hint" style="margin:0 0 10px;">${rows.length} movimiento(s) · Total $${Math.round(total).toLocaleString('es-CL')}</div>
+    ${rows.map(r=>`
+      <div class="fin-detail-row">
+        <div class="fin-detail-top">
+          <span class="com">${r.comercio || '—'}</span>
+          <span class="monto">$${Math.round(r.monto||0).toLocaleString('es-CL')}</span>
+        </div>
+        <div class="fin-detail-sub">${r.fecha ? new Date(r.fecha).toLocaleDateString('es-CL') : ''} ${r.categoria ? '· '+r.categoria : ''}</div>
+        <div class="fin-reclass-row">
+          ${buildClassifySelectTx(r.grupo, r.item, r.id)}
+          <button class="fin-reclass-save" data-id="${r.id}">Guardar</button>
+          <span class="saved-tag" style="display:none;">✓ Guardado</span>
+        </div>
+      </div>
+    `).join('') || '<div class="fin-hint">No hay movimientos.</div>'}
+  `;
+
+  body.querySelectorAll('select.fin-grupo-tx').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const txid = sel.dataset.txid;
+      const itemSel = body.querySelector(`select.fin-item-tx[data-txid="${txid}"]`);
+      const items = PRESUPUESTO_ITEMS[sel.value] || [];
+      itemSel.innerHTML = items.map(it=>`<option value="${it}">${it}</option>`).join('');
+    });
+  });
+  body.querySelectorAll('button.fin-reclass-save').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const txid = btn.dataset.id;
+      const grupoSel = body.querySelector(`select.fin-grupo-tx[data-txid="${txid}"]`);
+      const itemSel = body.querySelector(`select.fin-item-tx[data-txid="${txid}"]`);
+      await reclassifyTransaccion(txid, grupoSel.value, itemSel.value, btn);
+    });
+  });
+}
+
+async function reclassifyTransaccion(txId, grupo, item, btnEl){
+  const client = getClient();
+  if(!client) return;
+  const tx = finTx.find(r => String(r.id) === String(txId));
+  if(!tx) return;
+  try{
+    const { error: e1 } = await client.from(FIN_TABLE).update({ grupo, item }).eq('id', txId);
+    if(e1) throw e1;
+    const { error: e2 } = await client.from(MAP_TABLE).upsert(
+      { comercio: tx.comercio, categoria: tx.categoria, grupo, item, updated_at: new Date().toISOString() },
+      { onConflict:'comercio' }
+    );
+    if(e2) throw e2;
+
+    tx.grupo = grupo; tx.item = item;
+    comercioMap.set(normComercio(tx.comercio), { comercio: tx.comercio, categoria: tx.categoria, grupo, item });
+
+    if(btnEl && btnEl.nextElementSibling){
+      btnEl.nextElementSibling.style.display = 'inline';
+      setTimeout(()=>{ if(btnEl.nextElementSibling) btnEl.nextElementSibling.style.display = 'none'; }, 2000);
+    }
+    renderFinHistorico();
+    renderFinDetailModal();
+  }catch(e){
+    console.error('No se pudo reclasificar:', e);
+    alert('No se pudo guardar el cambio. Revisa la consola para más detalle.');
+  }
+}
+
+document.getElementById('finModalClose').addEventListener('click', closeFinModal);
+document.getElementById('finModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'finModalOverlay') closeFinModal();
+});
+document.getElementById('finChart').addEventListener('dblclick', (evt)=>{
+  if(!finChartInstance) return;
+  const points = finChartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect:true }, true);
+  if(!points.length) return;
+  const p = points[0];
+  const grupos = Object.keys(GRUPO_COLORS);
+  const periodo = finChartPeriods[p.index];
+  const grupo = grupos[p.datasetIndex];
+  if(periodo && grupo) openFinDetail(periodo, grupo, null);
+});
+
+// ====== Finanzas TC: carga de archivo mensual ======
+const FIELD_ALIASES = {
+  mes:['MES'], ciudad:['CIUDAD'], fecha:['FECHA'], id:['ID'], cuenta:['CUENTA'],
+  total:['TOTAL'], tt_a_pagar:['TT A PAGAR'], monto:['MONTO'],
+  categoria:['CATEGORÍA','CATEGORIA'], comercio:['COMERCIO']
+};
+function getField(row, field){
+  const keys = Object.keys(row);
+  for(const alias of FIELD_ALIASES[field]){
+    const found = keys.find(k => k.trim().toUpperCase() === alias);
+    if(found !== undefined) return row[found];
+  }
+  return null;
+}
+function toISODate(v){
+  if(!v) return null;
+  if(v instanceof Date) return v.toISOString().slice(0,10);
+  const d = new Date(v);
+  return isNaN(d) ? null : d.toISOString().slice(0,10);
+}
+
+document.getElementById('finFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type:'array', cellDates:true });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval:null });
+
+  finPendingRows = rows.map(r=>{
+    const comercio = getField(r,'comercio');
+    const norm = normComercio(comercio);
+    const known = comercioMap.get(norm);
+    const fecha = toISODate(getField(r,'fecha'));
+    const monto = Number(getField(r,'monto')) || 0;
+    const rawId = getField(r,'id');
+    const id = rawId != null ? String(rawId) : (norm + '-' + fecha + '-' + monto);
+    return {
+      id, mes: getField(r,'mes'), ciudad: getField(r,'ciudad'), fecha,
+      cuenta: getField(r,'cuenta'),
+      total: Number(getField(r,'total')) || null,
+      tt_a_pagar: Number(getField(r,'tt_a_pagar')) || null,
+      monto, categoria: getField(r,'categoria'), comercio,
+      grupo: known ? known.grupo : null,
+      item: known ? known.item : null,
+      duplicate: finIds.has(id)
+    };
+  }).filter(r => r.comercio || r.monto);
+
+  renderFinPreview();
+});
+
+function buildClassifySelect(r,i){
+  const grupos = Object.keys(PRESUPUESTO_ITEMS);
+  const grupoSel = `<select class="fin-classify fin-grupo" data-idx="${i}">
+    <option value="">Elegir grupo…</option>
+    ${grupos.map(g=>`<option value="${g}" ${r.grupo===g?'selected':''}>${g}</option>`).join('')}
+  </select>`;
+  const items = PRESUPUESTO_ITEMS[r.grupo] || [];
+  const itemSel = `<select class="fin-classify fin-item" data-idx="${i}" ${!r.grupo?'disabled':''}>
+    ${items.map(it=>`<option value="${it}" ${r.item===it?'selected':''}>${it}</option>`).join('')}
+  </select>`;
+  return grupoSel + ' ' + itemSel;
+}
+
+function renderFinPreview(){
+  document.getElementById('finPreviewWrap').style.display = 'block';
+  const nuevos = finPendingRows.filter(r=>!r.duplicate);
+  const dup = finPendingRows.filter(r=>r.duplicate).length;
+  const sinClasificar = nuevos.filter(r=>!r.grupo).length;
+  const totalMonto = nuevos.reduce((s,r)=>s+Number(r.monto||0),0);
+
+  document.getElementById('finPreviewSummary').innerHTML = `
+    <span><strong>${finPendingRows.length}</strong> movimientos leídos</span>
+    <span><strong>${nuevos.length}</strong> nuevos por guardar</span>
+    <span><strong>$${Math.round(totalMonto).toLocaleString('es-CL')}</strong> total</span>
+    ${dup ? `<span>${dup} ya existían y se omitirán</span>` : ''}
+    ${sinClasificar ? `<span style="color:#c96a52;"><strong>${sinClasificar}</strong> sin clasificar — revísalos abajo</span>` : ''}
+  `;
+
+  const table = document.getElementById('finPreviewTable');
+  table.innerHTML = `
+    <tr><th>Comercio</th><th>Categoría</th><th class="num">Monto</th><th>Clasificación</th></tr>
+    ${finPendingRows.map((r,i)=>`
+      <tr class="${r.duplicate ? 'duplicate-row' : (!r.grupo ? 'needs-review' : '')}">
+        <td>${r.comercio||'—'}${!r.duplicate && !comercioMap.has(normComercio(r.comercio)) ? '<span class="fin-tag-nuevo">nuevo</span>' : ''}</td>
+        <td>${r.categoria||'—'}</td>
+        <td class="num">$${Math.round(r.monto||0).toLocaleString('es-CL')}</td>
+        <td>${r.duplicate ? '(ya existe)' : buildClassifySelect(r,i)}</td>
+      </tr>`).join('')}
+  `;
+  table.querySelectorAll('select.fin-grupo').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const i = Number(sel.dataset.idx);
+      finPendingRows[i].grupo = sel.value;
+      finPendingRows[i].item = PRESUPUESTO_ITEMS[sel.value][0];
+      renderFinPreview();
+    });
+  });
+  table.querySelectorAll('select.fin-item').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      finPendingRows[Number(sel.dataset.idx)].item = sel.value;
+    });
+  });
+}
+
+document.getElementById('finSaveBtn').addEventListener('click', async ()=>{
+  const client = getClient();
+  if(!client){ alert('Falta configurar Supabase.'); return; }
+  const nuevos = finPendingRows.filter(r=>!r.duplicate);
+  const sinClasificar = nuevos.filter(r=>!r.grupo || !r.item);
+  if(sinClasificar.length){
+    alert(`Faltan ${sinClasificar.length} movimiento(s) por clasificar (quedan marcados en naranjo).`);
+    return;
+  }
+  if(!nuevos.length){ alert('No hay movimientos nuevos que guardar.'); return; }
+
+  try{
+    const { error: e1 } = await client.from(FIN_TABLE).upsert(
+      nuevos.map(({duplicate, ...rest})=>rest), { onConflict:'id' }
+    );
+    if(e1) throw e1;
+
+    const comerciosUnicos = new Map();
+    nuevos.forEach(r => comerciosUnicos.set(normComercio(r.comercio), {
+      comercio:r.comercio, categoria:r.categoria, grupo:r.grupo, item:r.item, updated_at:new Date().toISOString()
+    }));
+    const { error: e2 } = await client.from(MAP_TABLE).upsert(
+      Array.from(comerciosUnicos.values()), { onConflict:'comercio' }
+    );
+    if(e2) throw e2;
+
+    alert(`Listo — se guardaron ${nuevos.length} movimientos.`);
+    finPendingRows = [];
+    document.getElementById('finPreviewWrap').style.display = 'none';
+    document.getElementById('finFileInput').value = '';
+    await loadFinanzas();
+  }catch(err){
+    console.error(err);
+    alert('No se pudo guardar en Supabase. Revisa la consola para más detalle.');
+  }
+});
+
+// ====== Finanzas TC: navegación ======
+document.getElementById('viewSwitch').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.view-tab');
+  if(!btn) return;
+  document.querySelectorAll('.view-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const view = btn.dataset.view;
+  document.getElementById('viewPendientes').style.display = view==='pendientes' ? '' : 'none';
+  document.getElementById('viewFinanzas').style.display = view==='finanzas' ? '' : 'none';
+  if(view==='finanzas' && !finLoaded) loadFinanzas();
+});
+
+document.getElementById('finSubtabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.fin-subtab');
+  if(!btn) return;
+  document.querySelectorAll('.fin-subtab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const v = btn.dataset.finview;
+  document.getElementById('finHistorico').style.display = v==='historico' ? '' : 'none';
+  document.getElementById('finCargar').style.display = v==='cargar' ? '' : 'none';
+  document.getElementById('finPresupuesto').style.display = v==='presupuesto' ? '' : 'none';
+});
 
 if(SUPABASE_URL.includes('PEGA_AQUI') || SUPABASE_ANON_KEY.includes('PEGA_AQUI')){
   banner.classList.add('show');
