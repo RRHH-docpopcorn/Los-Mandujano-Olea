@@ -2599,6 +2599,9 @@ document.getElementById('finSubtabs').addEventListener('click', (e)=>{
   document.getElementById('finHistorico').style.display = v==='historico' ? '' : 'none';
   document.getElementById('finCargar').style.display = v==='cargar' ? '' : 'none';
   document.getElementById('finPresupuesto').style.display = v==='presupuesto' ? '' : 'none';
+  if(v === 'historico' && finLoaded){
+    renderFinHistorico(); // por si el presupuesto se editó mientras tanto
+  }
 });
 
 if(SUPABASE_URL.includes('PEGA_AQUI') || SUPABASE_ANON_KEY.includes('PEGA_AQUI')){
