@@ -2626,7 +2626,7 @@ function renderFinPreview(){
     <span><strong>$${Math.round(totalMonto).toLocaleString('es-CL')}</strong> total</span>
     ${dup ? `<span>${dup} ya existían y se omitirán</span>` : ''}
     ${porRegla ? `<span>${porRegla} clasificados por regla — revisa que estén bien</span>` : ''}
-    ${sinClasificar ? `<span style="color:#c96a52;"><strong>${sinClasificar}</strong> sin clasificar — revísalos abajo</span>` : ''}
+    ${sinClasificar ? `<span style="color:#c96a52;"><strong>${sinClasificar}</strong> sin clasificar — puedes guardarlos igual como "Sin clasificar" y corregirlos después</span>` : ''}
   `;
 
   const table = document.getElementById('finPreviewTable');
@@ -2659,29 +2659,34 @@ document.getElementById('finSaveBtn').addEventListener('click', async ()=>{
   const client = getClient();
   if(!client){ alert('Falta configurar Supabase.'); return; }
   const nuevos = finPendingRows.filter(r=>!r.duplicate);
-  const sinClasificar = nuevos.filter(r=>!r.grupo || !r.item);
-  if(sinClasificar.length){
-    alert(`Faltan ${sinClasificar.length} movimiento(s) por clasificar (quedan marcados en naranjo).`);
-    return;
-  }
   if(!nuevos.length){ alert('No hay movimientos nuevos que guardar.'); return; }
+  const sinClasificar = nuevos.filter(r=>!r.grupo || !r.item).length;
 
   try{
-    const { error: e1 } = await client.from(FIN_TABLE).upsert(
-      nuevos.map(({duplicate, ...rest})=>rest), { onConflict:'id' }
-    );
+    const paraGuardar = nuevos.map(({duplicate, fuenteClasificacion, ...rest})=>({
+      ...rest,
+      grupo: rest.grupo || 'VARIOS',
+      item: rest.item || 'Sin clasificar'
+    }));
+    const { error: e1 } = await client.from(FIN_TABLE).upsert(paraGuardar, { onConflict:'id' });
     if(e1) throw e1;
 
+    // solo le "enseñamos" al diccionario los comercios que sí quedaron clasificados de verdad
     const comerciosUnicos = new Map();
-    nuevos.forEach(r => comerciosUnicos.set(normComercio(r.comercio), {
+    nuevos.filter(r => r.grupo && r.item).forEach(r => comerciosUnicos.set(normComercio(r.comercio), {
       comercio:r.comercio, categoria:r.categoria, grupo:r.grupo, item:r.item, updated_at:new Date().toISOString()
     }));
-    const { error: e2 } = await client.from(MAP_TABLE).upsert(
-      Array.from(comerciosUnicos.values()), { onConflict:'comercio' }
-    );
-    if(e2) throw e2;
+    if(comerciosUnicos.size){
+      const { error: e2 } = await client.from(MAP_TABLE).upsert(
+        Array.from(comerciosUnicos.values()), { onConflict:'comercio' }
+      );
+      if(e2) throw e2;
+    }
 
-    alert(`Listo — se guardaron ${nuevos.length} movimientos.`);
+    alert(
+      `Listo — se guardaron ${nuevos.length} movimientos.` +
+      (sinClasificar ? `\n${sinClasificar} quedaron como "VARIOS · Sin clasificar" — puedes corregirlos cuando quieras haciendo doble click en esa fila en la pestaña Histórico.` : '')
+    );
     finPendingRows = [];
     document.getElementById('finPreviewWrap').style.display = 'none';
     document.getElementById('finFileInput').value = '';
