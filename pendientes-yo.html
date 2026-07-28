@@ -2456,6 +2456,7 @@ async function parsePdfBancoSecurity(file, periodoInput){
   const blob = text.replace(/\s+/g, ' ').trim();
   const mesTexto = MESES_FULL[parseInt(periodoInput.split('-')[1], 10) - 1];
   const rows = [];
+  const idsUsados = new Map(); // el banco a veces repite el mismo código en cargos administrativos
   let m;
   PDF_TX_PATTERN.lastIndex = 0;
   while((m = PDF_TX_PATTERN.exec(blob)) !== null){
@@ -2464,10 +2465,20 @@ async function parsePdfBancoSecurity(file, periodoInput){
     if(/monto cancelado/i.test(descripcion)) continue; // pago/abono, no es un gasto
     const [dd, mm, yyyy] = fechaStr.split('/');
     const comercio = descripcion.replace(/\s*TASA INT\.?\s*[\d,]+%\s*$/i, '').trim();
+
+    let id = codigo;
+    if(idsUsados.has(id)){
+      const n = idsUsados.get(id) + 1;
+      idsUsados.set(id, n);
+      id = `${codigo}-${n}`;
+    } else {
+      idsUsados.set(id, 1);
+    }
+
     rows.push({
       MES: mesTexto,
       FECHA: `${yyyy}-${mm}-${dd}`,
-      ID: codigo,
+      ID: id,
       CUENTA: lugar ? `${descripcion} ${lugar}` : descripcion,
       TOTAL: parseMontoCLP(montoOpStr),
       'TT A PAGAR': parseMontoCLP(montoTotalStr),
@@ -2529,6 +2540,18 @@ document.getElementById('finFileInput').addEventListener('change', async (e)=>{
       duplicate: finIds.has(id)
     };
   }).filter(r => r.comercio || r.monto);
+
+  // seguro adicional: si dos filas del mismo archivo comparten id, se desambiguan aquí
+  const vistos = new Map();
+  finPendingRows.forEach(r=>{
+    if(vistos.has(r.id)){
+      const n = vistos.get(r.id) + 1;
+      vistos.set(r.id, n);
+      r.id = `${r.id}-${n}`;
+    } else {
+      vistos.set(r.id, 1);
+    }
+  });
 
   renderFinPreview();
 });
