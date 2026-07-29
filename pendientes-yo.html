@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Los Mandujano Olea — Pendientes de casa (Yo)</title>
+<title>Los Mandujano Olea — Pendientes de casa (Sindy)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -665,7 +665,7 @@
   <header>
     <h1>🧷 Los Mandujano Olea</h1>
     <p>Los pendientes de la casa, los niños y los papeleos — para ti y para Hans</p>
-    <p style="font-size:0.75rem; opacity:0.6; margin-top:2px;">(esta es tu vista — Yo)</p>
+    <p style="font-size:0.75rem; opacity:0.6; margin-top:2px;">(esta es tu vista — Sindy)</p>
   </header>
 
   <div class="view-switch" id="viewSwitch">
@@ -692,7 +692,7 @@
     </select>
     <select id="f-asig">
       <option value="ambos">👥 Ambos</option>
-      <option value="yo">🔵 Yo</option>
+      <option value="yo">🔵 Sindy</option>
       <option value="hans">🔴 Hans</option>
     </select>
     <input type="datetime-local" id="f-fecha" title="Fecha de recordatorio (opcional)">
@@ -998,7 +998,7 @@ function catLabel(c){
   return c==='casa' ? '🏠 Casa' : c==='ninos' ? '👶 Niños' : '📋 Administrativo';
 }
 function asigLabel(a){
-  return a==='yo' ? '🔵 Yo' : a==='hans' ? '🔴 Hans' : '👥 Ambos';
+  return a==='yo' ? '🔵 Sindy' : a==='hans' ? '🔴 Hans' : '👥 Ambos';
 }
 
 function buildTaskCard(t){
@@ -1213,7 +1213,7 @@ function renderStats(){
     </div>
     <div class="stat-card">
       <div class="stat-num">${byYo}</div>
-      <div class="stat-label">🔵 Por Yo</div>
+      <div class="stat-label">🔵 Por Sindy</div>
     </div>
     <div class="stat-card">
       <div class="stat-num">${byHans}</div>
@@ -1261,7 +1261,7 @@ function buildEditForm(t){
   const asigSelect = document.createElement('select');
   asigSelect.innerHTML = `
     <option value="ambos">👥 Ambos</option>
-    <option value="yo">🔵 Yo</option>
+    <option value="yo">🔵 Sindy</option>
     <option value="hans">🔴 Hans</option>
   `;
   asigSelect.value = t.assignee;
