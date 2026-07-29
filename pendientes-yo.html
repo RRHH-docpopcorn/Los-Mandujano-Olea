@@ -874,6 +874,10 @@ const GOOGLE_CLIENT_ID = '246221194381-tups484imcku1qhopqqmv8gckhlf1hjn.apps.goo
 // 6. Para que solo aparezcan los eventos que comparten entre ustedes
 //    (donde el otro está invitado), pega aquí el correo de Google de Hans:
 const CORREO_PAREJA = 'hansmandujano@gmail.com';
+// 7. ¿Esta vista debe mostrar SOLO lo compartido con tu pareja, o TODO tu calendario?
+//    En pendientes-yo.html se deja en false (Sindy ve todo su calendario).
+//    En pendientes-hans.html se deja en true (Hans solo ve lo compartido, no lo privado de Sindy).
+const SOLO_EVENTOS_COMPARTIDOS = false;
 // ==========================================
 
 // ====== Finanzas TC ======
@@ -1604,10 +1608,11 @@ async function fetchGoogleEvents(){
     if(!res.ok) throw new Error('Google respondió ' + res.status);
     const data = await res.json();
     const all = data.items || [];
-    // Solo mostramos eventos donde la otra persona también está invitada
-    const shared = all.filter(ev =>
-      (ev.attendees || []).some(a => (a.email || '').toLowerCase() === gcalPartnerEmail)
-    );
+    // Si SOLO_EVENTOS_COMPARTIDOS es true, se muestran solo los eventos donde
+    // la otra persona también está invitada. Si es false, se muestra todo el calendario propio.
+    const shared = SOLO_EVENTOS_COMPARTIDOS
+      ? all.filter(ev => (ev.attendees || []).some(a => (a.email || '').toLowerCase() === gcalPartnerEmail))
+      : all;
     lastGcalEvents = shared;
     render();
   }catch(e){
