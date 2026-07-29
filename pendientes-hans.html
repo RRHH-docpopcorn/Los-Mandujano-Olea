@@ -692,7 +692,7 @@
     </select>
     <select id="f-asig">
       <option value="ambos">👥 Ambos</option>
-      <option value="yo">🔵 Yo</option>
+      <option value="yo">🔵 Sindy</option>
       <option value="hans">🔴 Hans</option>
     </select>
     <input type="datetime-local" id="f-fecha" title="Fecha de recordatorio (opcional)">
@@ -998,7 +998,7 @@ function catLabel(c){
   return c==='casa' ? '🏠 Casa' : c==='ninos' ? '👶 Niños' : '📋 Administrativo';
 }
 function asigLabel(a){
-  return a==='yo' ? '🔵 Yo' : a==='hans' ? '🔴 Hans' : '👥 Ambos';
+  return a==='yo' ? '🔵 Sindy' : a==='hans' ? '🔴 Hans' : '👥 Ambos';
 }
 
 function buildTaskCard(t){
@@ -1213,7 +1213,7 @@ function renderStats(){
     </div>
     <div class="stat-card">
       <div class="stat-num">${byYo}</div>
-      <div class="stat-label">🔵 Por Yo</div>
+      <div class="stat-label">🔵 Por Sindy</div>
     </div>
     <div class="stat-card">
       <div class="stat-num">${byHans}</div>
@@ -1261,7 +1261,7 @@ function buildEditForm(t){
   const asigSelect = document.createElement('select');
   asigSelect.innerHTML = `
     <option value="ambos">👥 Ambos</option>
-    <option value="yo">🔵 Yo</option>
+    <option value="yo">🔵 Sindy</option>
     <option value="hans">🔴 Hans</option>
   `;
   asigSelect.value = t.assignee;
